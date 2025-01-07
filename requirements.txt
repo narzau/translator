@@ -1,0 +1,17 @@
+# Screen capture
+mss>=9.0.1
+
+# Image processing
+Pillow>=10.2.0
+opencv-python>=4.9.0.80
+numpy>=1.26.4
+
+# OCR
+pytesseract>=0.3.10
+
+# Translation
+deep-translator>=1.11.4
+langdetect>=1.0.9
+
+# System interaction
+keyboard>=0.13.5

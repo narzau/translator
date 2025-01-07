@@ -27,7 +27,11 @@ class OCRProcessor:
             Extracted text from the image
         """
         try:
-            processed_image = preprocess_image(image, save_debug)
+            processed_image = preprocess_image(
+                image, 
+                save_debug=save_debug, 
+                debug_dir=DEBUG_DIR
+            )            
             return self._extract_text(processed_image)
         except Exception as e:
             logger.error(f"OCR processing failed: {e}")

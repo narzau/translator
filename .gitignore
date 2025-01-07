@@ -68,3 +68,4 @@ dist/
 .venv
 env/
 venv/
+new_env_name/

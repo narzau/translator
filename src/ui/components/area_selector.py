@@ -88,7 +88,7 @@ class AreaSelector(tk.Toplevel):
         if self.callback:
             self.callback(selected_area)
     
-    def cancel_selection(self):
+    def cancel_selection(self, event):
         """Cancel selection"""
         self.withdraw()
         if self.callback:

@@ -1,10 +1,18 @@
 import tkinter as tk
-from typing import Optional, Callable, Dict
+from typing import Optional, Callable, Dict, Coroutine, Any
+import logging
+
+logger = logging.getLogger(__name__)
 
 class AreaSelector(tk.Toplevel):
-    def __init__(self, parent: tk.Tk, callback: Callable[[Optional[Dict[str, int]]], None]):
+    def __init__(
+        self,
+        parent: tk.Tk,
+        callback: Callable[[Optional[Dict[str, int]]], Coroutine[Any, Any, None]]
+    ):
         super().__init__(parent)
         
+        self.parent = parent
         self.callback = callback
         self.setup_window()
         self.setup_canvas()
@@ -52,7 +60,7 @@ class AreaSelector(tk.Toplevel):
         self.canvas.bind('<Button-1>', self.start_selection)
         self.canvas.bind('<B1-Motion>', self.update_selection)
         self.canvas.bind('<ButtonRelease-1>', self.end_selection)
-        self.bind('<Escape>', lambda e: self.cancel_selection())
+        self.bind('<Escape>', self.cancel_selection)
     
     def start_selection(self, event):
         """Handle selection start"""
@@ -72,25 +80,34 @@ class AreaSelector(tk.Toplevel):
             width=2
         )
     
+    def _invoke_callback(self, area: Optional[Dict[str, int]]):
+        """Invoke the async callback"""
+        if hasattr(self.parent, 'async_helper'):
+            self.parent.async_helper.run_coroutine(self.callback(area))
+        else:
+            logger.error("Parent window does not have async_helper")
+    
     def end_selection(self, event):
         """Handle selection end"""
-        x1, y1 = min(self.start_x, event.x), min(self.start_y, event.y)
-        x2, y2 = max(self.start_x, event.x), max(self.start_y, event.y)
-        
-        selected_area = {
-            'left': int(x1),
-            'top': int(y1),
-            'width': int(x2 - x1),
-            'height': int(y2 - y1)
-        }
-        
-        self.withdraw()
-        if self.callback:
-            self.callback(selected_area)
+        try:
+            x1, y1 = min(self.start_x, event.x), min(self.start_y, event.y)
+            x2, y2 = max(self.start_x, event.x), max(self.start_y, event.y)
+            
+            selected_area = {
+                'left': int(x1),
+                'top': int(y1),
+                'width': int(x2 - x1),
+                'height': int(y2 - y1)
+            }
+            
+            self.withdraw()
+            if self.callback:
+                self._invoke_callback(selected_area)
+        except Exception as e:
+            logger.error(f"Error in end_selection: {e}")
     
     def cancel_selection(self, event):
         """Cancel selection"""
         self.withdraw()
         if self.callback:
-            self.callback(None)
-        x1, y1 = min(self.start_x, event.x),
+            self._invoke_callback(None)

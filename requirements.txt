@@ -11,7 +11,8 @@ pytesseract>=0.3.10
 
 # Translation
 deep-translator>=1.11.4
-langdetect>=1.0.9
 
 # System interaction
 keyboard>=0.13.5
+
+openai>=1.59.5

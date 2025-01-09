@@ -1,17 +1,48 @@
 import tkinter as tk
 from tkinter import ttk
-from typing import Dict, Optional
 import logging
 import queue
+import asyncio
 from src.config.constants import AVAILABLE_LANGUAGES
 from src.ui.styles.theme import OVERLAY_THEME, FONTS, COLORS
 from src.core.capture import ScreenCapture
 from src.core.ocr import OCRProcessor
+from src.core.openai import OpenAIChatAnalyzer
 from src.core.translator import TranslationService
 from src.config.settings import Settings
 from src.ui.components.area_selector import AreaSelector
 
 logger = logging.getLogger(__name__)
+
+class AsyncTkHelper:
+    """Helper class to run async tasks in Tkinter"""
+    def __init__(self, root: tk.Tk):
+        self.root = root
+        self.loop = None
+        self._setup_async_loop()
+
+    def _setup_async_loop(self):
+        """Set up the async event loop"""
+        # Get or create event loop
+        try:
+            self.loop = asyncio.get_event_loop()
+        except RuntimeError:
+            self.loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self.loop)
+
+    async def run_async(self, coro):
+        """Run an async coroutine and return its result"""
+        return await coro
+
+    def run_coroutine(self, coro):
+        """Schedule a coroutine to run in the event loop"""
+        asyncio.run_coroutine_threadsafe(coro, self.loop)
+
+    def process_async(self):
+        """Process async events"""
+        self.loop.call_soon(self.loop.stop)
+        self.loop.run_forever()
+        self.root.after(50, self.process_async)
 
 class TranslationOverlay(tk.Tk):
     def __init__(
@@ -19,23 +50,24 @@ class TranslationOverlay(tk.Tk):
         capture: ScreenCapture,
         ocr: OCRProcessor,
         translator: TranslationService,
+        chat_analyzer: OpenAIChatAnalyzer,
         settings: Settings
     ):
         super().__init__()
         
+        # Initialize async helper
+        self.async_helper = AsyncTkHelper(self)
+        
         # Store dependencies
         self.capture = capture
         self.ocr = ocr
+        self.chat_analyzer = chat_analyzer
         self.translator = translator
         self.settings = settings
         
-        # Initialize queues and state
+        # Initialize queues
         self.command_queue = queue.Queue()
         self.result_queue = queue.Queue()
-        self.last_result = {
-            'original_text': '',
-            'translated_text': ''
-        }
         
         # Setup window properties
         self.setup_window()
@@ -45,6 +77,9 @@ class TranslationOverlay(tk.Tk):
         
         # Start checking command queue
         self.check_command_queue()
+        
+        # Start processing async events
+        self.async_helper.process_async()
         
     def setup_window(self):
         """Configure main window properties"""
@@ -86,7 +121,7 @@ class TranslationOverlay(tk.Tk):
             widget.bind("<B1-Motion>", self.do_drag)
             
         # Make labels draggable
-        for widget in (self.instructions, self.translation_text, self.detected_lang):
+        for widget in (self.instructions, self.translation_text):
             widget.bind("<Button-1>", self.start_drag)
             widget.bind("<B1-Motion>", self.do_drag)
     
@@ -118,7 +153,7 @@ class TranslationOverlay(tk.Tk):
         )
         self.translation_frame.pack(fill='x', pady=(0, 10))
         
-        # Header with detected language
+        # Header
         header_frame = tk.Frame(
             self.translation_frame,
             bg=OVERLAY_THEME['frame']['bg']
@@ -130,15 +165,6 @@ class TranslationOverlay(tk.Tk):
             text="Translated text:",
             **OVERLAY_THEME['header']
         ).pack(side='left')
-        
-        label_config = OVERLAY_THEME['label'].copy()
-        label_config['font'] = FONTS['small']
-        self.detected_lang = tk.Label(
-            header_frame,
-            text="Detected: None",
-            **label_config
-        )
-        self.detected_lang.pack(side='right')
         
         # Code block style frame for translation
         translation_block = tk.Frame(
@@ -236,7 +262,6 @@ class TranslationOverlay(tk.Tk):
             **entry_config,
             state='readonly',
             readonlybackground=OVERLAY_THEME['entry']['bg']
-
         )
         self.result_field.pack(side='left', fill='x', expand=True)
         
@@ -327,27 +352,25 @@ class TranslationOverlay(tk.Tk):
         selector = AreaSelector(self, self.handle_area_selection)
         selector.deiconify()
     
-    def handle_area_selection(self, area):
+    async def handle_area_selection(self, area):
         """Handle selected area"""
         if area:
             try:
-                # Capture and process image
-                image = self.capture.capture_area(area)
-                text = self.ocr.process_image(image)
-                result = self.translator.translate(text)
+                # Capture and process image                
+                chat_image = self.capture.capture_area(area)
+                text = self.ocr.process_image(chat_image)
+                result = await self.chat_analyzer.analyze_text_only(text)
                 
-                # Update UI
-                self.translation_text.config(text=result['translation'])
-                self.detected_lang.config(
-                    text=f"Detected: {result['source_lang']}"
-                )
-                
-                # Show window
-                self.deiconify()
+                # Schedule UI updates in the main thread
+                self.after(0, lambda: self._update_translation(result))
             except Exception as e:
                 logger.error(f"Translation failed: {e}")
-                self.translation_text.config(text=f"Error: {str(e)}")
-                self.deiconify()
+                self.after(0, lambda: self._update_translation(f"Error: {str(e)}"))
+    
+    def _update_translation(self, result: str):
+        """Update translation UI in the main thread"""
+        self.translation_text.config(text=result)
+        self.deiconify()
     
     def toggle_overlay(self):
         """Toggle overlay visibility"""

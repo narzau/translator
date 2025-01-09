@@ -115,6 +115,9 @@ class TranslationOverlay(tk.Tk):
         # Buttons
         self.setup_buttons()
         
+        # Version label
+        self.setup_version_label()
+        
         # Make entire window draggable by binding to all frames
         for widget in (self.main_frame, self.translation_frame, self.input_frame):
             widget.bind("<Button-1>", self.start_drag)
@@ -124,6 +127,30 @@ class TranslationOverlay(tk.Tk):
         for widget in (self.instructions, self.translation_text):
             widget.bind("<Button-1>", self.start_drag)
             widget.bind("<B1-Motion>", self.do_drag)
+
+    def setup_version_label(self):
+        """Setup version label in bottom right"""
+        version_label_config = OVERLAY_THEME['label'].copy()
+        version_label_config['font'] = FONTS['small']
+        version_label_config['fg'] = COLORS['text_secondary']
+        
+        version_frame = tk.Frame(
+            self.main_frame,
+            bg=OVERLAY_THEME['frame']['bg']
+        )
+        version_frame.pack(fill='x', pady=(5, 0))
+        
+        version_text = f"v{self.settings.version}"
+        version_label = tk.Label(
+            version_frame,
+            text=version_text,
+            **version_label_config
+        )
+        version_label.pack(side='right')
+        
+        # Make version label draggable
+        version_label.bind("<Button-1>", self.start_drag)
+        version_label.bind("<B1-Motion>", self.do_drag)
     
     def setup_instructions(self):
         """Setup instructions label"""

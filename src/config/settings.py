@@ -21,8 +21,15 @@ class Settings:
             'default_target_lang': 'en',
             'save_debug_images': False,
             'overlay_opacity': 0.8,
-            'overlay_position': {'x': 100, 'y': 100}
+            'overlay_position': {'x': 100, 'y': 100},
+            'version': '1.0.1'
         }
+
+    @property
+    def version(self) -> str:
+        return self._settings.get('version', '1.0.0')  # Default to 1.0.0 if not set
+    
+    
     
     def save(self):
         with open(self.settings_file, 'w') as f:

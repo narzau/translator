@@ -18,7 +18,6 @@ class AreaSelector(tk.Toplevel):
         self.setup_canvas()
         self.bind_events()
         
-        # Force focus and raise window
         self.focus_force()
         self.lift()
         self.attributes('-topmost', True)
@@ -28,7 +27,6 @@ class AreaSelector(tk.Toplevel):
         self.attributes('-fullscreen', True, '-alpha', 0.3, '-topmost', True)
         self.configure(bg='black')
         
-        # Set window state to ensure it's visible
         self.state('normal')
         self.focus_set()
     
@@ -41,7 +39,6 @@ class AreaSelector(tk.Toplevel):
         )
         self.canvas.pack(fill='both', expand=True)
         
-        # Add instructions
         self.canvas.create_text(
             self.winfo_screenwidth() // 2,
             50,

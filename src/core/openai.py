@@ -34,7 +34,6 @@ class OpenAIChatAnalyzer:
         self.system_prompt = """You translate game chat from Portuguese to English. Format: [Team] Name: message
 Do not include explanations or original text."""
 
-        # Mock responses for development mode
         self.mock_responses = [
             """[Team] Player1: hi everyone, wanna play?
 [Team] Player2: yeah, let's go!
@@ -97,14 +96,13 @@ Do not include explanations or original text."""
 
     async def _get_mock_response(self) -> str:
         """Get a random mock response for development mode"""
-        # Add random delay to simulate API latency
         await asyncio.sleep(random.uniform(0.5, 2.0))
         return random.choice(self.mock_responses)
 
     async def analyze_chat(
         self,
         image_input: Union[str, Image.Image],
-        max_tokens: int = 300,  # Reduced from 1000
+        max_tokens: int = 300,
         temperature: float = 0.7,
         is_url: bool = False
     ) -> Optional[str]:
@@ -125,10 +123,8 @@ Do not include explanations or original text."""
         """
         try:
             if self.dev_mode:
-                # In development mode, return mock response
                 return await self._get_mock_response()
 
-            # Handle different types of image input
             if isinstance(image_input, Image.Image):
                 image_data = self._encode_pil_image(image_input)
             elif is_url:
@@ -138,7 +134,6 @@ Do not include explanations or original text."""
 
             image_payload = self._prepare_image_payload(image_data)
             
-            # Make API call
             response = await self.client.chat.completions.create(
                 model="openai/gpt-4o-mini-2024-07-18",
                 messages=[
@@ -166,7 +161,7 @@ Do not include explanations or original text."""
             
         except Exception as e:
             logger.error(f"Error processing chat image: {str(e)}")
-            raise  # Re-raise the exception for better error handling
+            raise 
             
     def update_system_prompt(self, new_prompt: str) -> None:
         """
@@ -187,15 +182,13 @@ Do not include explanations or original text."""
         Returns:
             str: Cleaned response
         """
-        # Remove code blocks
         response = response.replace('```', '').strip()
         
         # Remove any introductory text
         if "here's" in response.lower() or "translation" in response.lower():
-            # Split by newlines and find where the actual chat starts
             lines = response.split('\n')
             for i, line in enumerate(lines):
-                if '[' in line and ']' in line:  # Found a chat message
+                if '[' in line and ']' in line:
                     response = '\n'.join(lines[i:])
                     break
         
@@ -214,20 +207,20 @@ Do not include explanations or original text."""
         self,
         text: str,
         max_tokens: int = 300,
-        temperature: float = 0.7
+        temperature: float = 0.7,
+        callback = None
     ) -> Optional[str]:
         """
-        Test method for analyzing raw text without image processing.
-        This can be used to compare token usage with the image-based method.
+        Test method for analyzing raw text with streaming support.
         
         Args:
             text: Raw text from OCR
             max_tokens: Maximum tokens for response
             temperature: Temperature for response generation
+            callback: Optional callback function to handle streaming chunks
         """
         try:
-            # Make API call
-            response = await self.client.chat.completions.create(
+            stream = await self.client.chat.completions.create(
                 model="openai/gpt-4o-mini-2024-07-18",
                 messages=[
                     {
@@ -240,11 +233,22 @@ Do not include explanations or original text."""
                     }
                 ],
                 max_tokens=max_tokens,
-                temperature=temperature
+                temperature=temperature,
+                stream=True
             )
             
-            return self._clean_response(response.choices[0].message.content)
+            collected_content = []
+            async for chunk in stream:
+                if chunk.choices[0].delta.content is not None:
+                    content = chunk.choices[0].delta.content
+                    collected_content.append(content)
+                    
+                    if callback:
+                        await callback(''.join(collected_content))
             
+            final_content = ''.join(collected_content)
+            return self._clean_response(final_content)
+                
         except Exception as e:
             logger.error(f"Error processing text: {str(e)}")
             raise

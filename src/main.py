@@ -7,7 +7,7 @@ from src.utils.hotkeys import HotkeyManager
 from src.config.settings import Settings
 from src.utils.logger import setup_logger
 
-OPEN_ROUTER_API_KEY="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"
+OPEN_ROUTER_API_KEY=""
 
 def main():
     logger = setup_logger()

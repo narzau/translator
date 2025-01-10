@@ -3,7 +3,6 @@ import keyboard
 import threading
 import time
 import logging
-from typing import Callable, Dict
 from src.config.constants import HOTKEYS
 
 logger = logging.getLogger(__name__)
@@ -41,6 +40,9 @@ class HotkeyManager:
                     time.sleep(0.3)
                 elif keyboard.is_pressed(HOTKEYS['clear_fields']):
                     self.app.command_queue.put('clear_fields')
+                    time.sleep(0.3)
+                elif keyboard.is_pressed(HOTKEYS['copy_translation']):
+                    self.app.command_queue.put('copy_translation')
                     time.sleep(0.3)
             except Exception as e:
                 logger.error(f"Error in hotkey monitoring: {e}")

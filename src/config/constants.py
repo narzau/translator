@@ -23,7 +23,8 @@ OCR_CONFIG = r'--psm 6 --oem 1'
 HOTKEYS = {
     'select_area': 'ctrl+alt+x',
     'toggle_overlay': 'ctrl+alt+c',
-    'clear_fields': 'ctrl+alt+d'
+    'clear_fields': 'ctrl+alt+d',
+    'copy_translation': 'ctrl+shift+c'
 }
 
 SAVE_DEBUG_IMAGES = False

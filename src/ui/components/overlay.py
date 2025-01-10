@@ -313,15 +313,19 @@ class TranslationOverlay(tk.Tk):
         ).pack(side='right')
     
     def copy_translation(self):
-        """Copy translation to clipboard"""
+        """Copy translation result to clipboard"""
+        # Only copy if there's a translation and no error
         translation = self.result_field.get()
         if translation and not translation.startswith('Error:'):
             self.clipboard_clear()
             self.clipboard_append(translation)
             
-            original_bg = self.copy_button.cget('bg')
-            self.copy_button.configure(bg=OVERLAY_THEME['button_danger']['bg'])
-            self.after(200, lambda: self.copy_button.configure(bg=original_bg))
+            # Provide visual feedback
+            self.result_field.config(state='normal')
+            original_bg = self.result_field.cget('bg')
+            self.result_field.config(bg=COLORS['success'])
+            self.after(200, lambda: self.result_field.config(bg=original_bg))
+            self.result_field.config(state='readonly')
 
     def start_drag(self, event):
         """Start window drag"""
@@ -356,6 +360,8 @@ class TranslationOverlay(tk.Tk):
                     self.toggle_overlay()
                 elif command == 'clear_fields':
                     self.clear_fields()
+                elif command == 'copy_translation':
+                    self.copy_translation()
         except queue.Empty:
             pass
         finally:
